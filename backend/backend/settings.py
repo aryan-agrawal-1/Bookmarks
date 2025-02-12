@@ -80,7 +80,7 @@ WSGI_APPLICATION = "backend.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
+# Using postgres with environ variables
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -93,6 +93,21 @@ DATABASES = {
 }
 
 SECRET_KEY = os.getenv('SECRET_KEY')
+
+# SETUP OF AUTH API
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+
+REST_USE_JWT = True
+
 
 
 # Password validation
@@ -135,3 +150,16 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# CELERY AND REDIS CONFIG
+
+# Redis is used as the broker
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
+# Task result backend (optional, needed if tracking task results)
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+# Accept JSON messages
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
