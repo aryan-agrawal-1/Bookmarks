@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 load_dotenv()
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     "categorisation",
     "integrations",
     "recommendations",
+    "rest_framework",
 ]
 
 MIDDLEWARE = [
@@ -96,15 +98,18 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SETUP OF AUTH API
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
 }
 
-AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-)
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days = 1),
+}
 
 REST_USE_JWT = True
 
@@ -162,4 +167,7 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 # Accept JSON messages
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
+AUTH_USER_MODEL = "users.CustomUser"  # Using our new user model
+
 
