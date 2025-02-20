@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: import.meta.env.REACT_APP_API_BASE_URL, // URL for API Requests
-  timeout: parseInt(import.meta.env.REACT_APP_API_TIMEOUT), // Max response wait time
+  baseURL: import.meta.env.VITE_API_BASE_URL, // URL for API Requests
+  timeout: parseInt(import.meta.env.VITE_API_TIMEOUT), // Max response wait time
   headers: {
     'Content-Type': 'application/json',
   },
