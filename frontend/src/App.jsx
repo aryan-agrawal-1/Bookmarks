@@ -1,11 +1,15 @@
-import './index.css'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// queryClient manages caching, invalidation and background updates of our queries
+const queryClient = new QueryClient();
 
 function App() {
 
   return (
-    <>
-      <h1 className='text-red-700'>Hello</h1>
-    </>
+    // makes the queryClient available to all components as the client prop is set to queryClient
+    <QueryClientProvider client={queryClient}>
+
+    </QueryClientProvider>
   )
 }
 
