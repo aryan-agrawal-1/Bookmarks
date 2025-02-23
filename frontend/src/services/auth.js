@@ -4,6 +4,7 @@ import {api} from './api'
 export const authServices = {
     // Asynch register function, takes all data needed for reg
     register: async (data) => {
+        localStorage.clear()
         const response = await api.post('api/auth/register/', data) // Send post request
         return response.data
     },
