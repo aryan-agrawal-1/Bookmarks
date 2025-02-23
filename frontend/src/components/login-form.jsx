@@ -3,12 +3,15 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Toaster } from "@/components/ui/sonner"
 
 // ME
 import { useForm } from 'react-hook-form'; // Manage form state and validation
 import { useMutation } from '@tanstack/react-query'; //Perform asynch ops, manage state
 import { authServices } from '../services/auth';
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner"
+
 
 export function LoginForm({className,...props}) {
 
@@ -29,7 +32,7 @@ export function LoginForm({className,...props}) {
 
     // If failed, we should display error component to user
     onError: (error) => {
-      console.error('Login failed:', error);
+      toast.warning(error.response?.data?.detail || "An error occurred")
     }
   })
 
@@ -75,6 +78,7 @@ export function LoginForm({className,...props}) {
           Sign up
         </a>
       </div>
+      <Toaster position='bottom-left' />
     </form>)
   );
 }
