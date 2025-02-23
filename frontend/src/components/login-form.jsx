@@ -51,10 +51,10 @@ export function LoginForm({className,...props}) {
       </div>
       <div className="grid gap-6">
         <div className="grid gap-3">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Email/Username</Label>
           {/* Registers the field with react hook form so it can track inputs */}
           {/* and handle validation  also adds onchange and other attributes*/}
-          <Input {...register('email')} id="email" type="email" placeholder="m@example.com" required />
+          <Input {...register('email')} id="email" type="text" placeholder="m@example.com" required />
         </div>
         <div className="grid gap-3">
           <div className="flex items-center">
@@ -71,7 +71,7 @@ export function LoginForm({className,...props}) {
       </div>
       <div className="text-center text-sm">
         Don&apos;t have an account?{" "}
-        <a href="#" className="underline underline-offset-4">
+        <a href="/register" className="underline underline-offset-4">
           Sign up
         </a>
       </div>
