@@ -22,7 +22,9 @@ export function RegisterForm({className,...props}) {
     mutationFn: authServices.register, // perform register
 
     // If successful set tokens and redirect
-    onSuccess: () => {
+    onSuccess: (data) => {
+      localStorage.setItem('access', data.access);
+      localStorage.setItem('refresh', data.refresh);
       navigate("/")
     },
 
