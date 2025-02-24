@@ -3,13 +3,14 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Toaster } from "@/components/ui/sonner"
 
 // ME
 import { useForm } from 'react-hook-form'; // Manage form state and validation
 import { useMutation } from '@tanstack/react-query'; //Perform asynch ops, manage state
 import { authServices } from '../services/auth';
 import { useNavigate } from "react-router-dom";
-import { Toaster } from "sonner";
+import { toast } from "sonner";
 
 export function RegisterForm({className,...props}) {
 
@@ -30,8 +31,29 @@ export function RegisterForm({className,...props}) {
 
     // If failed, we should display error component to user
     onError: (error) => {
-      toast.warning(error.response?.data?.detail || "An error occurred")
+      const errorData = error.response?.data; // See if we have custom error
+      let errorMessage = 'An error occurred';
+
+      if (errorData) {
+        errorMessage = errorData.detail; // Set to custom message
+      } else {
+
+        // Collect all error messages from different keys
+        const messages = []
+        Object.keys(errorData).forEach(key => {
+          const message = errorData[key]
+          if (Array.isArray(message)) {
+            messages.push(...message);
+          } else {
+            messages.push(message)
+          }
+        })
+
+        errorMessage = messages.join(' ') || errorMessage;
+      }
+      toast.warning(errorMessage);
     }
+
   })
 
   const onSubmit = (data) => {
@@ -76,12 +98,12 @@ export function RegisterForm({className,...props}) {
 
         <div className="grid gap-3">
           <Label htmlFor="password">Password</Label>
-          <Input {...register('password')} id="password" type="password" required />
+          <Input {...register('password')} id="password" type="password" minlength = "6" required />
         </div>
 
         <div className="grid gap-3">
           <Label htmlFor="conf_password">Confirm Password</Label>
-          <Input {...register('conf_password')} id="conf_password" type="password" required />
+          <Input {...register('conf_password')} id="conf_password" type="password" minlength = "6" required />
         </div>
 
         <Button type="submit" className="w-full" disabled={registerMutation.isPending}>

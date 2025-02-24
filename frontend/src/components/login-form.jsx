@@ -32,7 +32,27 @@ export function LoginForm({className,...props}) {
 
     // If failed, we should display error component to user
     onError: (error) => {
-      toast.warning(error.response?.data?.detail || "An error occurred")
+      const errorData = error.response?.data; // See if we have custom error
+      let errorMessage = 'An error occurred';
+
+      if (errorData) {
+        errorMessage = errorData.detail; // Set to custom message
+      } else {
+
+        // Collect all error messages from different keys
+        const messages = []
+        Object.keys(errorData).forEach(key => {
+          const message = errorData[key]
+          if (Array.isArray(message)) {
+            messages.push(...message);
+          } else {
+            messages.push(message)
+          }
+        })
+
+        errorMessage = messages.join(' ') || errorMessage;
+      }
+      toast.warning(errorMessage);
     }
   })
 

@@ -14,8 +14,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {"password": {"write_only": True}, "conf_password": {"write_only": True}}
     
     def validate(self, data):
+        if len(data["password"]) < 6:
+            raise serializers.ValidationError({"detail": "Passwords must be 6+ characters"})
+
         if data["password"] != data["conf_password"]:
-            raise serializers.ValidationError({"conf_password": "Passwords do not match."})
+            raise serializers.ValidationError({"detail": "Passwords do not match."})
         return data
     
     def create(self, validated):
@@ -25,6 +28,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             return user
         except ValidationError as e:
             raise serializers.ValidationError(e.message_dict)
+
 # CUSTOMISING THE LOGIN
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -32,11 +36,16 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         password = attrs.get("password")
 
         if not email or not password:
-            raise serializers.ValidationError("Both username and password are required.")
+            raise serializers.ValidationError({"detail":"Both username and password are required."})
 
         user = User.objects.filter(email__iexact=email).first() or User.objects.filter(username__iexact=email).first()
+
+        if not user:
+            raise serializers.ValidationError({"detail": "User does not exist."})
+        
+        if not user.check_password(password):
+            raise serializers.ValidationError({"detail": "Incorrect password."})
 
         if user and user.check_password(password):
             attrs['email'] = user.email
             return super().validate(attrs)
-        raise serializers.ValidationError("No active account found with the given credentials")
