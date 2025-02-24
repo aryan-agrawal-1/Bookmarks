@@ -49,3 +49,22 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         if user and user.check_password(password):
             attrs['email'] = user.email
             return super().validate(attrs)
+
+# FORGOT PASSWORD
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_pass = serializers.CharField(write_only = True)
+    conf_pass = serializers.CharField(write_only = True)
+
+    def validate(self, attrs):
+        if attrs['new_pass'] != attrs['conf_pass']:
+            raise serializers.ValidationError({"detail": "Passwords do not match."})
+        
+        if len(attrs['new_pass']) < 6:
+            raise serializers.ValidationError({"detail": "Password must be at least 6 characters."})
+
+        return attrs
