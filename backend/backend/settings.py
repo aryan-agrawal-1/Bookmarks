@@ -171,6 +171,7 @@ AUTH_USER_MODEL = "users.CustomUser"  # Using our new user model
 # CORS
 CORS_ALLOWED_ORIGINS = [
     FRONTEND_URL,
+    "http://localhost:5173"
 ]
 
 # EMAIL

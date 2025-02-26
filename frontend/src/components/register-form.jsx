@@ -93,7 +93,7 @@ export function RegisterForm({className,...props}) {
 
         <div className="grid gap-3">
           <Label htmlFor="username">Username</Label>
-          <Input {...register('username')} id="username" type="text" placeholder="username" required />
+          <Input {...register('username')} id="username" type="text" placeholder="Username" required />
         </div>
 
         <div className="grid gap-3">

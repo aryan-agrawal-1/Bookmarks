@@ -97,3 +97,4 @@ class ResetPasswordView(generics.GenericAPIView):
         user.save()
 
         return Response({"detail": "Password reset successfully"}, status=status.HTTP_200_OK)
+

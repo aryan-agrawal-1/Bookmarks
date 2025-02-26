@@ -20,5 +20,17 @@ export const authServices = {
         const refresh = localStorage.getItem('refresh')
         const response = await api.post('api/auth/token-refresh/', {refresh}) // Send refresh token in request body
         return response.data
+    },
+
+    // Asynch forgot password function, just passes email to backend
+    forgotPassword: async (data) => {
+        const response = await api.post('api/auth/forgot-password/', data)
+        return response.data
+    },
+
+    // Asynch reset password function, takes all the data needed for forgot password
+    resetPassword: async (data) => {
+        const response = await api.post('api/auth/reset-password/', {data})
+        return response.data
     }
 }
