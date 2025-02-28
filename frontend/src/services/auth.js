@@ -24,13 +24,15 @@ export const authServices = {
 
     // Asynch forgot password function, just passes email to backend
     forgotPassword: async (data) => {
+        localStorage.clear()
         const response = await api.post('api/auth/forgot-password/', data)
         return response.data
     },
 
     // Asynch reset password function, takes all the data needed for forgot password
     resetPassword: async (data) => {
-        const response = await api.post('api/auth/reset-password/', {data})
+        localStorage.clear()
+        const response = await api.post('api/auth/reset-password/', data)
         return response.data
     }
 }

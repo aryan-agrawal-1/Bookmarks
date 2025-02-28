@@ -57,7 +57,7 @@ class ForgotPasswordView(generics.GenericAPIView):
             token = token_gen.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
 
-            reset_link = f"{s.FRONTEND_URL}/api/auth/reset-password/{uid}/{token}/"
+            reset_link = f"{s.FRONTEND_URL}/reset-password/{uid}/{token}/"
 
             send_mail(
                 'Password Reset Request',

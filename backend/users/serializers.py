@@ -59,7 +59,7 @@ class ResetPasswordSerializer(serializers.Serializer):
     token = serializers.CharField()
     new_pass = serializers.CharField(write_only = True)
     conf_pass = serializers.CharField(write_only = True)
-
+    
     def validate(self, attrs):
         if attrs['new_pass'] != attrs['conf_pass']:
             raise serializers.ValidationError({"detail": "Passwords do not match."})
