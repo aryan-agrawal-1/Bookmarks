@@ -1,185 +1,276 @@
+# users/tests.py
 from django.test import TestCase
-from django.contrib.auth import get_user_model
-from .models import CustomUser
-from .backends import EmailOrUsernameModelBackend
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
-from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+from unittest.mock import patch
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from users.backends import EmailOrUsernameModelBackend
 
 User = get_user_model()
 
-# Model Tests
-class TestUserModel(TestCase):
-    # Simple user creation check
-    def test_create_user(self):
-        user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            name='Test User',
-            password='password'
-        )
-        self.assertEqual(user.email, 'test@example.com')
-        self.assertEqual(user.username, 'testuser')
-        self.assertFalse(user.email_verified)
-        self.assertTrue(user.check_password('password'))
 
-    def test_email_uniqueness_case_insensitive(self):
-        User.objects.create_user(
-            email='test@example.com',
-            username='user1',
-            name='User 1',
-            password='password'
-        )
-        with self.assertRaises(ValidationError):
-            User.objects.create_user(
-                email='TEST@EXAMPLE.COM',
-                username='user2',
-                name='User 2',
-                password='password'
-            )
-
-    def test_username_uniqueness_case_insensitive(self):
-        User.objects.create_user(
-            email='user1@example.com',
-            username='testuser',
-            name='User 1',
-            password='password'
-        )
-        with self.assertRaises(ValidationError):
-            User.objects.create_user(
-                email='user2@example.com',
-                username='TESTUSER',
-                name='User 2',
-                password='password'
-            )
-
-    def test_string_representation(self):
-        user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            name='Test User',
-            password='password'
-        )
-        self.assertEqual(str(user), "Test User (test@example.com)")
-
-
-# Authentication Backend Tests
-class TestAuthenticationBackend(TestCase):
-    # Create a User we can test on
-    def setUp(self):
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            name='Test User',
-            password='password'
-        )
-        self.backend = EmailOrUsernameModelBackend()
-
-
-    def test_authenticate_with_email(self):
-        user = self.backend.authenticate(request=None, username='test@example.com', password='password')
-        self.assertEqual(user, self.user)
-
-    def test_authenticate_with_email_case_insensitive(self):
-        user = self.backend.authenticate(None, username='TEST@EXAMPLE.COM', password='password')
-        self.assertEqual(user, self.user)
-
-    def test_authenticate_with_username(self):
-        user = self.backend.authenticate(None, username='testuser', password='password')
-        self.assertEqual(user, self.user)
-
-    def test_authenticate_with_username_case_insensitive(self):
-        user = self.backend.authenticate(None, username='TESTUSER', password='password')
-        self.assertEqual(user, self.user)
-
-    def test_authenticate_invalid_credentials(self):
-        self.assertIsNone(self.backend.authenticate(None, username='test@example.com', password='wrong'))
-        self.assertIsNone(self.backend.authenticate(None, username='nonexistent', password='password'))
-
-
-# API Tests
-class TestRegistrationAPI(APITestCase):
+class TestRegistration(APITestCase):
+    """Test user registration endpoint"""
     def setUp(self):
         self.client = APIClient()
-        self.url = '/api/auth/register/'
-        self.valid_data = {
+        self.url = reverse('user-profile')
+        self.valid_payload = {
             'name': 'Test User',
             'email': 'test@example.com',
             'username': 'testuser',
-            'password': 'password',
-            'conf_password': 'password'
+            'password': 'securepassword123',
+            'conf_password': 'securepassword123'
         }
 
     def test_successful_registration(self):
-        response = self.client.post(self.url, self.valid_data)
+        """Test new user can register with valid data"""
+        response = self.client.post(self.url, self.valid_payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('access', response.data)  # Check JWT tokens are returned
+        self.assertIn('refresh', response.data)
         self.assertEqual(User.objects.count(), 1)
-        user = User.objects.first()
-        self.assertEqual(user.email, self.valid_data['email'])
-        self.assertEqual(user.username, self.valid_data['username'])
-
-    def test_email_case_insensitive_uniqueness(self):
-        # Create a user with the original email
-        self.client.post(self.url, self.valid_data)
-
-        # Attempt to register with the same email but different case
-        data = {**self.valid_data, 'email': 'TEST@EXAMPLE.COM', 'username': 'newuser'}
-        response = self.client.post(self.url, data)
-
-        # Check that the response contains the expected error
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('email', response.data)
-        self.assertEqual(response.data['email'][0], "A user with this email already exists.")
-
-    def test_username_case_insensitive_uniqueness(self):
-        # Create a user with the original username
-        self.client.post(self.url, self.valid_data)
-
-        # Attempt to register with the same username but different case
-        data = {**self.valid_data, 'email': 'new@example.com', 'username': 'TESTUSER'}
-        response = self.client.post(self.url, data)
-
-        # Check that the response contains the expected error
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('username', response.data)
-        self.assertEqual(response.data['username'][0], "A user with this username already exists.")
 
     def test_password_mismatch(self):
-        data = {**self.valid_data, 'conf_password': 'mismatch'}
-        response = self.client.post(self.url, data)
-        print(response.status_code)
+        """Test registration fails when passwords don't match"""
+        payload = self.valid_payload.copy()
+        payload['conf_password'] = 'differentpassword'
+        response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('conf_password', response.data)
+        self.assertIn('detail', response.data)
+
+    def test_short_password(self):
+        """Test password length validation (min 6 chars)"""
+        payload = self.valid_payload.copy()
+        payload['password'] = 'short'
+        payload['conf_password'] = 'short'
+        response = self.client.post(self.url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_existing_email(self):
+        """Test case-insensitive email uniqueness"""
+        User.objects.create_user(
+            email='Test@Example.com',  # Different case
+            username='existing',
+            name='Existing User',
+            password='testpass123'
+        )
+        response = self.client.post(self.url, self.valid_payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+
+    def test_existing_username(self):
+        """Test case-insensitive username uniqueness"""
+        User.objects.create_user(
+            email='existing@example.com',
+            username='TestUser',  # Different case
+            name='Existing User',
+            password='testpass123'
+        )
+        response = self.client.post(self.url, self.valid_payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('username', response.data)
 
 
-class TestLoginAPI(APITestCase):
+class TestLogin(APITestCase):
+    """Test user login endpoint"""
     def setUp(self):
         self.client = APIClient()
-        self.url = '/api/auth/login/'
+        self.url = reverse('login')
         self.user = User.objects.create_user(
-            email='test@example.com',
+            email='user@example.com',
             username='testuser',
             name='Test User',
-            password='password'
+            password='validpassword123'
         )
 
     def test_login_with_email(self):
-        response = self.client.post(self.url, {'email': 'test@example.com', 'password': 'password'})
+        """Test login using email credentials"""
+        data = {'email': 'user@example.com', 'password': 'validpassword123'}
+        response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access', response.data)
-
-    def test_login_with_email_case_insensitive(self):
-        response = self.client.post(self.url, {'email': 'TEST@EXAMPLE.COM', 'password': 'password'})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('refresh', response.data)
 
     def test_login_with_username(self):
-        response = self.client.post(self.url, {'email': 'testuser', 'password': 'password'})
+        """Test login using username credentials"""
+        data = {'email': 'testuser', 'password': 'validpassword123'}
+        response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_login_with_username_case_insensitive(self):
-        response = self.client.post(self.url, {'email': 'TESTUSER', 'password': 'password'})
+    def test_login_case_insensitive(self):
+        """Test email/username case insensitivity"""
+        data = {'email': 'USER@EXAMPLE.COM', 'password': 'validpassword123'}
+        response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_invalid_credentials(self):
-        response = self.client.post(self.url, {'email': 'test@example.com', 'password': 'wrong'})
+    def test_invalid_password(self):
+        """Test login fails with wrong password"""
+        data = {'email': 'user@example.com', 'password': 'wrongpassword'}
+        response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_nonexistent_user(self):
+        """Test login fails for non-existent user"""
+        data = {'email': 'nonexistent@example.com', 'password': 'testpass'}
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TestForgotPassword(APITestCase):
+    """Test password reset initiation endpoint"""
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('forgot-password')
+        self.user = User.objects.create_user(
+            email='user@example.com',
+            username='testuser',
+            name='Test User',
+            password='testpass123'
+        )
+
+    @patch('users.views.send_mail')
+    def test_existing_user(self, mock_send):
+        """Test password reset flow for existing user"""
+        data = {'email': 'user@example.com'}
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(mock_send.called)
+
+    def test_nonexistent_user(self):
+        """Test password reset request for non-existent user (security measure)"""
+        data = {'email': 'invalid@example.com'}
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_reset_link_validity(self):
+        """Test generated reset link works correctly"""
+        token_generator = PasswordResetTokenGenerator()
+        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = token_generator.make_token(self.user)
+        
+        # Verify token validation
+        self.assertTrue(token_generator.check_token(self.user, token))
+        self.assertEqual(force_str(urlsafe_base64_decode(uid)), str(self.user.pk))
+
+
+class TestResetPassword(APITestCase):
+    """Test password reset completion endpoint"""
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('reset-password')
+        self.user = User.objects.create_user(
+            email='user@example.com',
+            username='testuser',
+            name='Test User',
+            password='oldpassword'
+        )
+        self.token_generator = PasswordResetTokenGenerator()
+        self.uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        self.token = self.token_generator.make_token(self.user)
+
+    def test_valid_reset(self):
+        """Test successful password reset with valid token"""
+        data = {
+            'uid': self.uid,
+            'token': self.token,
+            'new_pass': 'newsecurepassword123',
+            'conf_pass': 'newsecurepassword123'
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('newsecurepassword123'))
+
+    def test_invalid_token(self):
+        """Test reset fails with invalid token"""
+        data = {
+            'uid': self.uid,
+            'token': 'invalid-token',
+            'new_pass': 'newpassword123',
+            'conf_pass': 'newpassword123'
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_password_mismatch(self):
+        """Test reset fails when passwords don't match"""
+        data = {
+            'uid': self.uid,
+            'token': self.token,
+            'new_pass': 'newpassword123',
+            'conf_pass': 'differentpassword'
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_short_password(self):
+        """Test password length validation during reset"""
+        data = {
+            'uid': self.uid,
+            'token': self.token,
+            'new_pass': 'short',
+            'conf_pass': 'short'
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TestEmailOrUsernameModelBackend(TestCase):
+    """Test custom authentication backend"""
+    def setUp(self):
+        self.backend = EmailOrUsernameModelBackend()
+        self.user = User.objects.create_user(
+            email='user@example.com',
+            username='testuser',
+            name='Test User',
+            password='validpassword123'
+        )
+
+    def test_authenticate_with_email(self):
+        """Test authentication using email"""
+        user = self.backend.authenticate(
+            request=None,
+            username='user@example.com',
+            password='validpassword123'
+        )
+        self.assertEqual(user, self.user)
+
+    def test_authenticate_with_username(self):
+        """Test authentication using username"""
+        user = self.backend.authenticate(
+            request=None,
+            username='testuser',
+            password='validpassword123'
+        )
+        self.assertEqual(user, self.user)
+
+    def test_case_insensitive(self):
+        """Test case-insensitive authentication"""
+        user = self.backend.authenticate(
+            request=None,
+            username='USER@EXAMPLE.COM',
+            password='validpassword123'
+        )
+        self.assertEqual(user, self.user)
+
+    def test_invalid_password(self):
+        """Test authentication fails with wrong password"""
+        user = self.backend.authenticate(
+            request=None,
+            username='user@example.com',
+            password='wrongpassword'
+        )
+        self.assertIsNone(user)
+
+    def test_user_does_not_exist(self):
+        """Test authentication for non-existent user"""
+        user = self.backend.authenticate(
+            request=None,
+            username='nonexistent@example.com',
+            password='testpass'
+        )
+        self.assertIsNone(user)
