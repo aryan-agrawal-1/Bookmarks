@@ -4,8 +4,9 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from unittest.mock import patch
+from unittest.mock import patch, call
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.core.mail import EmailMultiAlternatives
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from users.backends import EmailOrUsernameModelBackend
@@ -132,13 +133,18 @@ class TestForgotPassword(APITestCase):
             password='testpass123'
         )
 
-    @patch('users.views.send_mail')
+    @patch('users.views.EmailMultiAlternatives.send')
     def test_existing_user(self, mock_send):
         """Test password reset flow for existing user"""
         data = {'email': 'user@example.com'}
         response = self.client.post(self.url, data)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(mock_send.called)
+
+        # Check if email is sent with HTML
+        _, kwargs = mock_send.call_args
+        self.assertIn("text/html", kwargs.get("content_subtype", ""))
 
     def test_nonexistent_user(self):
         """Test password reset request for non-existent user (security measure)"""

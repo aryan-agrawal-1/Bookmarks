@@ -9,12 +9,10 @@ from rest_framework.response import Response
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from django.conf import settings as s
-
-
-
-
 
 User = get_user_model()
 
@@ -59,13 +57,19 @@ class ForgotPasswordView(generics.GenericAPIView):
 
             reset_link = f"{s.FRONTEND_URL}/reset-password/{uid}/{token}/"
 
-            send_mail(
-                'Password Reset Request',
-                f'Click the link to reset your password: {reset_link}',
-                s.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
+            # render html email
+            html_content = render_to_string("emails/password_reset.html", {"reset_link": reset_link, "user": user})
+            text_content = strip_tags(html_content)
+
+            email_message = EmailMultiAlternatives(
+                subject="Password Reset Request",
+                body=text_content,  # Fallback text version
+                from_email=s.DEFAULT_FROM_EMAIL,
+                to=[user.email],
             )
+
+            email_message.attach_alternative(html_content, "text/html")
+            email_message.send()
 
         return Response(
             {"detail": "If an account exists with this email, a password reset link has been sent."},
