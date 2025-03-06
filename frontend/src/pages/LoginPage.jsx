@@ -2,6 +2,8 @@ import { GalleryVerticalEnd } from "lucide-react"
 
 import { LoginForm } from "@/components/login-form"
 
+import ThemeToggle from "@/components/ThemeToggle"
+
 export default function LoginPage() {
   return (
     (<div className="grid min-h-svh lg:grid-cols-2">
