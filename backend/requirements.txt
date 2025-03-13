@@ -15,6 +15,7 @@ click-repl==0.3.0
 distro==1.9.0
 Django==5.1.6
 django-cors-headers==4.7.0
+django-filter==25.1
 django-redis==5.4.0
 djangorestframework==3.15.2
 djangorestframework_simplejwt==5.4.0
